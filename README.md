@@ -1,2 +1,2 @@
 # 176BChatServer
-A chat server done by Andrew Doan and Richard Boone
+A chat server done by Andrew Doan and Richard Boone in Python
