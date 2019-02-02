@@ -17,35 +17,30 @@ server.listen(100)
   
 list_of_clients = [] 
 
-def getFile(conn):
-    with open('received_file', 'wb') as f:
-        print ('file opened')
+def getFile(conn,filename):
+    filename='(copy)'+filename
+    with open(filename, 'wb') as f:
         while True:
             print('receiving data...')
             data = conn.recv(1024)
             if data[0:12]=="done sending":
                 break
-            print(data[0:6])
-            print('data=%s', (data))
-            
-            # write data to a file
             f.write(data)
 
-    f.close()
-    print('Successfully get the file')
 
-
-def sendFile(conn):
-    filename='mytext.txt'
+def sendFile(conn,filename):
+    conn.send(filename)
+    
     f = open(filename,'rb')
     l = f.read(1024)
     while (l):
        conn.send(l)
-       print('Sent ',repr(l))
+       print("Sent %r",repr(l))
        l = f.read(1024)
     f.close()
 
-    print('Done sending')
+    conn.send("done sending")
+    
 
 
 def clientthread(conn, addr): 
@@ -54,9 +49,14 @@ def clientthread(conn, addr):
     while True: 
             try: 
                 message = conn.recv(2048) 
+               
                 if message[0:9] == "send file": 
-                    broadcastFile("received_file",conn)
-                    getFile(conn)
+                    filename=conn.recv(1024)
+                    print("here")
+                    getFile(conn,filename)
+                    print("got file")
+                    #broadcastFile("received_file",conn)
+                    
                 elif message:
                     print ("<" + addr[0] + "> " + message)
                     message_to_send = "<" + addr[0] + "> " + message 
@@ -80,7 +80,7 @@ def broadcastFile(filename,conn):
     for clients in list_of_clients: 
         if clients!=conn: 
             try: 
-                clients.send(filename)
+                sendFile(filename,clients)
             except: 
                 clients.close() 
                 remove(clients) 

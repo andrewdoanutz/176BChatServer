@@ -11,34 +11,32 @@ Port = int(sys.argv[2])
 server.connect((IP_address, Port)) 
   
 
+
 def getFile(conn):
-    with open('received_file', 'wb') as f:
-        print ('file opened')
+    
+    filename=conn.read(1024)+'2'
+    
+    #filename="filelul.txt"
+    with open(filename, 'wb') as f:
         while True:
             print('receiving data...')
             data = conn.recv(1024)
-            print('data=%s', (data))
             if not data:
                 break
-            # write data to a file
             f.write(data)
-
-    f.close()
-    print('Successfully get the file')
 
 
 def sendFile(conn,filename):
-   
+    conn.send(filename)
     f = open(filename,'rb')
     l = f.read(1024)
     while (l):
        conn.send(l)
-       print('Sent ',repr(l))
+       print("Sent: %r" % repr(l))
        l = f.read(1024)
     f.close()
-
-    print('Type done sending to finish sending')
-
+    
+    
 
 
 
@@ -59,6 +57,7 @@ while True:
                 filename=sys.stdin.readline()
                 filename=filename[:-1]
                 sendFile(server,filename)
+                server.send("done sending")
             else:
                 server.send(message) 
                 sys.stdout.write("<You>") 
