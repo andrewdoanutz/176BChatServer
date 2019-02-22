@@ -2,20 +2,49 @@ import socket
 import select 
 import sys 
 import thread 
+import os
+from Crypto.Cipher import AES
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
  
-if len(sys.argv) != 3: 
-    print ("Correct usage: script, IP address, port number")
+if len(sys.argv) != 4: 
+    print ("Correct usage: script, IP address, port number, keyfile")
     exit() 
  
 IP_address = str(sys.argv[1]) 
 Port = int(sys.argv[2]) 
+keyfile = str(sys.argv[3])
+key = ""
+try:
+	file = open(keyfile, "r")
+	key = file.readline()
+	file.close()
+except:
+	print("keyfile generated")
+	key = os.urandom(16)
+	file = open(keyfile, "w")
+	file.write(key)
+	file.close()
+	
+
+
+	
 server.bind((IP_address, Port)) 
 server.listen(100) 
   
 list_of_clients = [] 
+
+def encrypt_message(message):
+	#modify to always work even with non-16 length stuff
+	encryptor = AES.new(key)
+	text = encryptor.encrypt(message)
+	return text
+	
+def decrypt_message(text):
+	decryptor = AES.new(key)
+	message = decryptor.decrypt(text)
+	return message
 
 def getFile(conn,filename):
     filename='(copy)'+filename
@@ -88,6 +117,12 @@ def broadcastFile(filename,conn):
 def remove(connection): 
     if connection in list_of_clients: 
         list_of_clients.remove(connection) 
+  
+sometext = "hello, I'm a fuc"
+interim = encrypt_message(sometext)
+testtext = decrypt_message(interim)
+print(testtext)
+  
   
 while True: 
     conn, addr = server.accept() 
