@@ -28,8 +28,9 @@ except:
 	file.close()
 	
 
+intromessage = "Welcome to this chatroom!"
 
-	
+
 server.bind((IP_address, Port)) 
 server.listen(100) 
   
@@ -37,6 +38,8 @@ list_of_clients = []
 
 def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
+	message = message + (16 - (len(message) % 16)) * chr(16 - len(message) % 16)
+	print(len(message))
 	encryptor = AES.new(key)
 	text = encryptor.encrypt(message)
 	return text
@@ -44,6 +47,7 @@ def encrypt_message(message):
 def decrypt_message(text):
 	decryptor = AES.new(key)
 	message = decryptor.decrypt(text)
+	message = message[: (-1 * ord(message[len(message)-1]))]
 	return message
 
 def getFile(conn,filename):
@@ -73,12 +77,12 @@ def sendFile(conn,filename):
 
 
 def clientthread(conn, addr): 
-    conn.send("Welcome to this chatroom!") 
-    
+    encrypted_intro = encrypt_message(intromessage)
+    conn.send(encrypted_intro) 
     while True: 
             try: 
                 message = conn.recv(2048) 
-               
+                message = decrypt_message(message)
                 if message[0:9] == "send file": 
                     filename=conn.recv(1024)
                     print("here")
@@ -88,7 +92,8 @@ def clientthread(conn, addr):
                     
                 elif message:
                     print ("<" + addr[0] + "> " + message)
-                    message_to_send = "<" + addr[0] + "> " + message 
+                    message_to_send = "<" + addr[0] + "> " + message
+                    message_to_send = encrypt_message(message_to_send)
                     broadcast(message_to_send, conn) 
                 else: 
                     remove(conn) 
@@ -118,10 +123,10 @@ def remove(connection):
     if connection in list_of_clients: 
         list_of_clients.remove(connection) 
   
-sometext = "hello, I'm a fuc"
-interim = encrypt_message(sometext)
-testtext = decrypt_message(interim)
-print(testtext)
+# sometext = "hello, I'm a fnonucasfdasfdasd"
+# interim = encrypt_message(sometext)
+# testtext = decrypt_message(interim)
+# print(testtext)
   
   
 while True: 
