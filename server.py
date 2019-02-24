@@ -8,13 +8,21 @@ from Crypto.Cipher import AES
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-if len(sys.argv) != 4:
-    print ("Correct usage: script, IP address, port number, keyfile")
+filerecvserver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+filerecvserver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+filesendserver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+filesendserver.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+if len(sys.argv) != 6:
+    print ("Correct usage: script, IP address, port number, filesendport, filerecvport, keyfile")
     exit()
 
 IP_address = str(sys.argv[1])
 Port = int(sys.argv[2])
-keyfile = str(sys.argv[3])
+Port2 = int(sys.argv[3])
+Port3 = int(sys.argv[4])
+keyfile = str(sys.argv[5])
 key = ""
 try:
 	file = open(keyfile, "r")
@@ -34,6 +42,12 @@ intromessage = "Welcome to this chatroom!"
 server.bind((IP_address, Port))
 server.listen(100)
 
+filerecvserver.bind((IP_address, Port2))
+filerecvserver.listen(100)
+
+filesendserver.bind((IP_address, Port3))
+filesendserver.listen(100)
+
 list_of_clients = []
 
 def encrypt_message(message):
@@ -49,30 +63,48 @@ def decrypt_message(text):
 	message = message[: (-1 * ord(message[len(message)-1]))]
 	return message
 
-def getFile(conn,filename):
+def getFile(conn, addr):
+    filename = ""
+    filename = str(decrypt_message(conn.recv(16)))
+    # conn.send(encrypt_message(str(Port2)))
+    # newconn, newaddr = fileserver.()
+
+    print("receiving " + filename)
     filename='(copy)'+filename
+    print("receiving " + filename)
     with open(filename, 'wb') as f:
-        while True:
+        data = conn.recv(1040)
+        while data:
+            data = decrypt_message(data)
             print('receiving data...')
-            data = decrypt_message(conn.recv(1040))
-            if data[-12:]=="done sending":
-                break
+            # data = decrypt_message(conn.recv(1040))
+            # if data[-12:]=="done sending":
+                # break
             f.write(data)
-    f.close()
+            data = conn.recv(1040)
+    conn.close()
+    sys.exit()
 
+def sendFile(conn, addr):
+    # conn.send(filename)
+    filename = decrypt_message(conn.recv(1040))
+    try:
+        f = open(filename,'rb')
+    except:
+        conn.send(encrypt_message("file DNE"))
+        conn.close()
+        sys.exit()
 
-def sendFile(conn,filename):
-    conn.send(filename)
-
-    f = open(filename,'rb')
     l = f.read(1024)
     while (l):
-       conn.send(l)
+       conn.send(encrypt_message(l))
        print("Sent %r",repr(l))
        l = f.read(1024)
     f.close()
+    print("done sending")
+    conn.close()
+    # conn.send("done sending")
 
-    conn.send("done sending")
 
 
 
@@ -82,18 +114,22 @@ def clientthread(conn, addr):
 
     while True:
             try:
-                message = conn.recv(2048)
+                message = conn.recv(2080)
                 message = decrypt_message(message)
                 if message[0:9] == "send file":
-                    filename=decrypt_message(conn.recv(1024))
-                    print("here")
-                    getFile(conn,filename)
-                    print("got file")
+                    filename=decrypt_message(conn.recv(1040))
+                    conn.send(encrypt_message(str(Port2)))
+                    # print("here")
+                    # getFile(conn,filename)
+                    # print("got file")
                     broadcast(encrypt_message("file " + filename + " sent"), conn)
                     #broadcastFile("received_file",conn)
                 elif message[0:8] == "get file":
-                    filename = decrypt_message(conn.recv(1024))
-                    print("here2")
+                    conn.send(encrypt_message(str(Port3)))
+                    # print("here1")
+                    # print(message)
+                    # filename = decrypt_message(conn.recv(1024))
+                    # print("here2")
 
                 elif message:
                     print ("<" + addr[0] + "> " + message)
@@ -105,6 +141,16 @@ def clientthread(conn, addr):
 
             except:
                 continue
+
+def filerecv():
+    while True:
+        fileconn, fileaddr = filerecvserver.accept()
+        thread.start_new_thread(getFile, (fileconn, fileaddr))
+
+def filesend():
+    while True:
+        fileconn, fileaddr = filesendserver.accept()
+        thread.start_new_thread(sendFile, (fileconn, fileaddr))
 
 def broadcast(message, connection):
     for clients in list_of_clients:
@@ -128,17 +174,20 @@ def remove(connection):
     if connection in list_of_clients:
         list_of_clients.remove(connection)
 
-# sometext = "hello, I'm a fnonucasfdasfdasd"
-# interim = encrypt_message(sometext)
-# testtext = decrypt_message(interim)
-# print(testtext)
 
+
+thread.start_new_thread(filerecv, ())
+thread.start_new_thread(filesend, ())
 
 while True:
+    #chat
     conn, addr = server.accept()
     list_of_clients.append(conn)
     print (addr[0] + " connected")
     thread.start_new_thread(clientthread,(conn,addr))
+    #file transfer
+
+
 
 conn.close()
 server.close()

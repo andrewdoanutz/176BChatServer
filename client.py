@@ -4,6 +4,7 @@ import sys
 from Crypto.Cipher import AES
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 if len(sys.argv) != 4:
     print ("Correct usage: script, IP address, port number")
     exit()
@@ -40,31 +41,51 @@ def decrypt_message(text):
 	return message
 
 
-def getFile(conn):
-
-    filename=conn.read(1024)+'2'
-
+def getFile(conn, filename):
     #filename="filelul.txt"
+    conn.send(encrypt_message("get file"))
+    new_port = int(decrypt_message(conn.recv(1040)))
+    fileserver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    fileserver.connect((IP_address, new_port))
+    fileserver.send(encrypt_message(filename))
+
+    filename = '(recv)' + filename
     with open(filename, 'wb') as f:
-        while True:
+        data = fileserver.recv(1040)
+        while data:
             print('receiving data...')
-            data = conn.recv(1024)
-            if not data:
-                break
+            data = decrypt_message(data)
+            if (data == "file DNE"):
+                f.close()
+                print("file DNE")
+                return
             f.write(data)
+            data = fileserver.recv(1040)
+    fileserver.close()
 
 
 def sendFile(conn,filename):
+    try:
+        f = open(filename,'rb')
+    except:
+        print("file does not exist")
+        return
+    conn.send(encrypt_message("send file"))
     conn.send(encrypt_message(filename))
-    f = open(filename,'rb')
+    new_port = int(decrypt_message(conn.recv(1040)))
+    fileserver = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    fileserver.connect((IP_address, new_port))
+    fileserver.send(encrypt_message(filename))
     l = f.read(1024)
+    print("herre")
     while (l):
-       conn.send(encrypt_message(l))
-       print("Sent: %r" % repr(l))
-       l = f.read(1024)
+        print("heere")
+        fileserver.send(encrypt_message(l))
+        print("Sent: %r" % repr(l))
+        l = f.read(1024)
     f.close()
-
-
+    # fileserver.shutdown(socket.SHUT_RDWR)
+    fileserver.close()
 
 
 
@@ -75,20 +96,23 @@ while True:
 
     for socks in read_sockets:
         if socks == server:
-            message = socks.recv(2048)
-            # print(message)
+            message = socks.recv(2080)
             message = decrypt_message(message)
             print (message)
         else:
             message = sys.stdin.readline()
             if message[0:9]=='send file':
-                message = encrypt_message(message)
-                server.send(message)
+                # message = encrypt_message(message)
+                # server.send(message)
                 print("Enter filename")
                 filename=sys.stdin.readline()
                 filename=filename[:-1]
                 sendFile(server,filename)
-                server.send(encrypt_message("done sending"))
+            elif message[0:8] == 'get file':
+                print("Enter filename")
+                filename = sys.stdin.readline()
+                filename = filename[:-1]
+                getFile(server, filename)
             else:
                 sys.stdout.write("<You>")
                 sys.stdout.write(message)
