@@ -3,28 +3,6 @@ import select
 import sys
 from Crypto.Cipher import AES
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-if len(sys.argv) != 4:
-    print ("Correct usage: script, IP address, port number")
-    exit()
-IP_address = str(sys.argv[1])
-Port = int(sys.argv[2])
-server.connect((IP_address, Port))
-
-
-keyfile = str(sys.argv[3])
-key = ""
-try:
-	file = open(keyfile, "r")
-	key = file.readline()
-	file.close()
-except:
-	print("keyfile generated")
-	key = os.urandom(16)
-	file = open(keyfile, "w")
-	file.write(key)
-	file.close()
-
 def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
 	message = message + (16 - (len(message) % 16)) * chr(16 - len(message) % 16)
@@ -64,8 +42,34 @@ def sendFile(conn,filename):
     f.close()
 
 
+print("Enter a username:\n")
+username= sys.stdin.readline()
+username=username[:-1]
+print("stored "+username+" as username")
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+if len(sys.argv) != 4:
+    print ("Correct usage: script, IP address, port number")
+    exit()
+IP_address = str(sys.argv[1])
+Port = int(sys.argv[2])
+server.connect((IP_address, Port))
 
 
+keyfile = str(sys.argv[3])
+key = ""
+try:
+	file = open(keyfile, "r")
+	key = file.readline()
+	file.close()
+except:
+	print("keyfile generated")
+	key = os.urandom(16)
+	file = open(keyfile, "w")
+	file.write(key)
+	file.close()
+
+server.send(encrypt_message(username))
 
 while True:
 
@@ -94,7 +98,7 @@ while True:
                 server.send(message)
                 
             else:
-                sys.stdout.write("<You>")
+                sys.stdout.write("<" + username + "> ")
                 sys.stdout.write(message)
                 message = encrypt_message(message)
                 server.send(message)

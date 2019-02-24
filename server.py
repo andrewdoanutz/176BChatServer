@@ -5,37 +5,6 @@ import thread
 import os
 from Crypto.Cipher import AES
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-if len(sys.argv) != 4:
-    print ("Correct usage: script, IP address, port number, keyfile")
-    exit()
-
-IP_address = str(sys.argv[1])
-Port = int(sys.argv[2])
-keyfile = str(sys.argv[3])
-key = ""
-try:
-	file = open(keyfile, "r")
-	key = file.readline()
-	file.close()
-except:
-	print("keyfile generated")
-	key = os.urandom(16)
-	file = open(keyfile, "w")
-	file.write(key)
-	file.close()
-
-
-intromessage = "Welcome to this chatroom!"
-
-
-server.bind((IP_address, Port))
-server.listen(100)
-
-list_of_clients = []
-chatrooms=[[]]
 
 def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
@@ -78,7 +47,9 @@ def sendFile(conn,filename):
 
 
 def clientthread(conn, addr):
-    chatrooms[0].append(conn)
+    username = conn.recv(2048)
+    username=decrypt_message(username)
+    chatrooms[0].append((conn,username))
     currentRoom=0
     conn.send(encrypt_message("Welcome to this chatroom!\n"+"Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
     while True:
@@ -97,23 +68,24 @@ def clientthread(conn, addr):
                     filename = decrypt_message(conn.recv(1024))
                     print("here2")
                 elif message[0:13]=="make chatroom":
-                    chatrooms[currentRoom].remove(conn)
-                    chatrooms.append([conn])
+                    chatrooms[currentRoom].remove((conn,username))
+                    chatrooms.append([(conn,username)])
                     currentRoom=len(chatrooms)-1
                     conn.send(encrypt_message("Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
+                    broadcastAll(encrypt_message("New chatroom "+str(len(chatrooms)-1)+" created"),conn)
                 elif message[0:13]=="join chatroom":
                     roomnum=int(message[13:])
             
                     #try:
-                    chatrooms[currentRoom].remove(conn)
-                    chatrooms[roomnum].append(conn)
+                    chatrooms[currentRoom].remove((conn,username))
+                    chatrooms[roomnum].append((conn,username))
                     currentRoom=roomnum
                     conn.send(encrypt_message("Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
                     #except:
                         #conn.send(encrypt_message("Chatroom does not exist"))
                 elif message:
-                    print ("<" + addr[0] + "> " + message)
-                    message_to_send = "<" + addr[0] + "> " + message
+                    print ("<" + username + "> " + message)
+                    message_to_send = "<" + username + "> " + message
                     message_to_send = encrypt_message(message_to_send)
                     broadcast(message_to_send, conn,currentRoom)
                 else:
@@ -124,7 +96,7 @@ def clientthread(conn, addr):
                 continue
 
 def broadcast(message, connection,roomNum):
-    for clients in chatrooms[roomNum]:
+    for clients,username in chatrooms[roomNum]:
         if clients!=connection:
             try:
                 clients.send(message)
@@ -133,7 +105,14 @@ def broadcast(message, connection,roomNum):
                 remove(clients,chatrooms[roomNum])
                 remove(clients,list_of_clients)
 
-
+def broadcastAll(message,connection):
+    for clients in list_of_clients:
+        if clients!=connection:
+            try:
+                clients.send(message)
+            except:
+                clients.close()
+                remove(clients,list_of_clients)
 
 def remove(connection,curList):
     if connection in curList:
@@ -144,6 +123,37 @@ def remove(connection,curList):
 # testtext = decrypt_message(interim)
 # print(testtext)
 
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+if len(sys.argv) != 4:
+    print ("Correct usage: script, IP address, port number, keyfile")
+    exit()
+
+IP_address = str(sys.argv[1])
+Port = int(sys.argv[2])
+keyfile = str(sys.argv[3])
+key = ""
+try:
+	file = open(keyfile, "r")
+	key = file.readline()
+	file.close()
+except:
+	print("keyfile generated")
+	key = os.urandom(16)
+	file = open(keyfile, "w")
+	file.write(key)
+	file.close()
+
+
+intromessage = "Welcome to this chatroom!"
+
+
+server.bind((IP_address, Port))
+server.listen(100)
+
+list_of_clients = []
+chatrooms=[[]]
 
 while True:
     conn, addr = server.accept()
