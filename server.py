@@ -35,6 +35,7 @@ server.bind((IP_address, Port))
 server.listen(100)
 
 list_of_clients = []
+chatrooms=[[]]
 
 def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
@@ -77,56 +78,66 @@ def sendFile(conn,filename):
 
 
 def clientthread(conn, addr):
-    encrypted_intro = encrypt_message(intromessage)
-    conn.send(encrypted_intro)
-
+    chatrooms[0].append(conn)
+    currentRoom=0
+    conn.send(encrypt_message("Welcome to this chatroom!\n"+"Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
     while True:
             try:
                 message = conn.recv(2048)
                 message = decrypt_message(message)
+                
                 if message[0:9] == "send file":
                     filename=decrypt_message(conn.recv(1024))
                     print("here")
                     getFile(conn,filename)
                     print("got file")
-                    broadcast(encrypt_message("file " + filename + " sent"), conn)
+                    broadcast(encrypt_message("file " + filename + " sent by "+addr[0]), conn,currentRoom)
                     #broadcastFile("received_file",conn)
                 elif message[0:8] == "get file":
                     filename = decrypt_message(conn.recv(1024))
                     print("here2")
-
+                elif message[0:13]=="make chatroom":
+                    chatrooms[currentRoom].remove(conn)
+                    chatrooms.append([conn])
+                    currentRoom=len(chatrooms)-1
+                    conn.send(encrypt_message("Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
+                elif message[0:13]=="join chatroom":
+                    roomnum=int(message[13:])
+            
+                    #try:
+                    chatrooms[currentRoom].remove(conn)
+                    chatrooms[roomnum].append(conn)
+                    currentRoom=roomnum
+                    conn.send(encrypt_message("Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
+                    #except:
+                        #conn.send(encrypt_message("Chatroom does not exist"))
                 elif message:
                     print ("<" + addr[0] + "> " + message)
                     message_to_send = "<" + addr[0] + "> " + message
                     message_to_send = encrypt_message(message_to_send)
-                    broadcast(message_to_send, conn)
+                    broadcast(message_to_send, conn,currentRoom)
                 else:
-                    remove(conn)
+                    remove(conn,chatrooms[currentRoom])
+                    remove(conn,list_of_clients)
 
             except:
                 continue
 
-def broadcast(message, connection):
-    for clients in list_of_clients:
+def broadcast(message, connection,roomNum):
+    for clients in chatrooms[roomNum]:
         if clients!=connection:
             try:
                 clients.send(message)
             except:
                 clients.close()
-                remove(clients)
+                remove(clients,chatrooms[roomNum])
+                remove(clients,list_of_clients)
 
-def broadcastFile(filename,conn):
-    for clients in list_of_clients:
-        if clients!=conn:
-            try:
-                sendFile(filename,clients)
-            except:
-                clients.close()
-                remove(clients)
 
-def remove(connection):
-    if connection in list_of_clients:
-        list_of_clients.remove(connection)
+
+def remove(connection,curList):
+    if connection in curList:
+        curList.remove(connection)
 
 # sometext = "hello, I'm a fnonucasfdasfdasd"
 # interim = encrypt_message(sometext)

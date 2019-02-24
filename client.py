@@ -29,7 +29,6 @@ def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
 	message = message + (16 - (len(message) % 16)) * chr(16 - len(message) % 16)
 	encryptor = AES.new(key)
-        print(len(message))
 	text = encryptor.encrypt(message)
 	return text
 
@@ -89,6 +88,11 @@ while True:
                 filename=filename[:-1]
                 sendFile(server,filename)
                 server.send(encrypt_message("done sending"))
+                print("File Sent")
+            elif message[0:13]=="make chatroom" or message[0:13]=="join chatroom":
+                message = encrypt_message(message)
+                server.send(message)
+                
             else:
                 sys.stdout.write("<You>")
                 sys.stdout.write(message)
