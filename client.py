@@ -78,7 +78,7 @@ while True:
 
     for socks in read_sockets:
         if socks == server:
-            message = socks.recv(2048)
+            message = socks.recv(2080)
             # print(message)
             message = decrypt_message(message)
             print (message)

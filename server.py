@@ -54,18 +54,18 @@ def clientthread(conn, addr):
     conn.send(encrypt_message("Welcome to this chatroom!\n"+"Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
     while True:
             try:
-                message = conn.recv(2048)
+                message = conn.recv(2080)
                 message = decrypt_message(message)
                 
                 if message[0:9] == "send file":
-                    filename=decrypt_message(conn.recv(1024))
+                    filename=decrypt_message(conn.recv(1040))
                     print("here")
                     getFile(conn,filename)
                     print("got file")
                     broadcast(encrypt_message("file " + filename + " sent by "+addr[0]), conn,currentRoom)
                     #broadcastFile("received_file",conn)
                 elif message[0:8] == "get file":
-                    filename = decrypt_message(conn.recv(1024))
+                    filename = decrypt_message(conn.recv(1040))
                     print("here2")
                 elif message[0:13]=="make chatroom":
                     chatrooms[currentRoom].remove((conn,username))
