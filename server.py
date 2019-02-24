@@ -54,10 +54,11 @@ def getFile(conn,filename):
     with open(filename, 'wb') as f:
         while True:
             print('receiving data...')
-            data = decrypt_message(conn.recv(1024))
-            if data[0:12]=="done sending":
+            data = decrypt_message(conn.recv(1040))
+            if data[-12:]=="done sending":
                 break
             f.write(data)
+    f.close()
 
 
 def sendFile(conn,filename):
@@ -78,6 +79,7 @@ def sendFile(conn,filename):
 def clientthread(conn, addr):
     encrypted_intro = encrypt_message(intromessage)
     conn.send(encrypted_intro)
+
     while True:
             try:
                 message = conn.recv(2048)
@@ -87,7 +89,11 @@ def clientthread(conn, addr):
                     print("here")
                     getFile(conn,filename)
                     print("got file")
+                    broadcast(encrypt_message("file " + filename + " sent"), conn)
                     #broadcastFile("received_file",conn)
+                elif message[0:8] == "get file":
+                    filename = decrypt_message(conn.recv(1024))
+                    print("here2")
 
                 elif message:
                     print ("<" + addr[0] + "> " + message)
