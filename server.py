@@ -83,7 +83,7 @@ def clientthread(conn, addr):
                 message = conn.recv(2048)
                 message = decrypt_message(message)
                 if message[0:9] == "send file":
-                    filename=conn.recv(1024)
+                    filename=decrypt_message(conn.recv(1024))
                     print("here")
                     getFile(conn,filename)
                     print("got file")

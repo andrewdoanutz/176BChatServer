@@ -29,6 +29,7 @@ def encrypt_message(message):
 	#modify to always work even with non-16 length stuff
 	message = message + (16 - (len(message) % 16)) * chr(16 - len(message) % 16)
 	encryptor = AES.new(key)
+        print(len(message))
 	text = encryptor.encrypt(message)
 	return text
 
