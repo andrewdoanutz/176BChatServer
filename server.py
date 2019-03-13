@@ -69,7 +69,7 @@ def clientthread(conn, addr):
     username=decrypt_message(username)
     chatrooms[0].append((conn,username))
     currentRoom=0
-    conn.send(encrypt_message("Welcome to this chatroom!\n"+"Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
+    conn.send(encrypt_message("Current chatroom: "+str(currentRoom)+"\n"+"Range of chatrooms: 0-"+str((len(chatrooms)-1))))
     while True:
             try:
                 message = conn.recv(2080)
@@ -89,7 +89,6 @@ def clientthread(conn, addr):
                     broadcastAll(encrypt_message("New chatroom "+str(len(chatrooms)-1)+" created"),conn)
                 elif message[0:13]=="join chatroom":
                     roomnum=int(message[13:])
-
                     #try:
                     chatrooms[currentRoom].remove((conn,username))
                     chatrooms[roomnum].append((conn,username))

@@ -72,14 +72,10 @@ def sendFile(conn,filename):
 
 #GUI methods
 def sendFileFunc(message):
-    filename=message
-    filename=filename[:-1]
-    sendFile(server,filename)
+    sendFile(server,message)
 
 def getFileFunc(message):
-    filename = message
-    filename = filename[:-1]
-    getFile(server, filename)
+    getFile(server, message)
 
 def roomFunc(roomNum):
     message = encrypt_message(roomNum)
@@ -92,78 +88,46 @@ def on_closing(top,event=None):
 def messageProcessing(message,f,msg_list):
     print("here")
     if f=='send file':
-        msg_list.insert(Tkinter.END,"Enter filename")
+        msg_list.insert(Tkinter.END,"Sending file "+message)
         sendFileFunc(message)
-    elif message[0:8] == 'get file':
-        msg_list.insert(Tkinter.END,"Enter filename")
+    elif f == 'get file':
+        msg_list.insert(Tkinter.END,"Getting file "+message)
         getFileFunc(message)
     elif f=="make chatroom" or f=="join chatroom":
-        msg_list.insert(Tkinter.END,"Enter chatroom number")
-        message = encrypt_message(message)
-        server.send(f+" "+message)
+        if(f=="make chatroom"):
+            text="Making chatroom"
+            sendText = encrypt_message(f)
+            server.send(sendText)
+        else:
+            text="Joining chatroom "+message
+            message = encrypt_message(f+" "+message)
+            server.send(message)
+        msg_list.insert(Tkinter.END,text)
+        
     else:
         sendMessage(username,server,message,msg_list)
 
-def startGUI(username,server):
 
-    top = Tkinter.Tk()
-    top.title("Chatter")
 
-    messages_frame = Tkinter.Frame(top)
-    my_msg = Tkinter.StringVar()  # For the messages to be sent.
-    scrollbar = Tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
-    # Following will contain the messages.
-    msg_list = Tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
-    scrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
-    msg_list.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
-    msg_list.pack()
-    messages_frame.pack()
-    entry_field = Tkinter.Entry(top, textvariable=my_msg)
-    entry_field.bind("<Return>", messageProcessing(my_msg.get(),"send",msg_list))
-    entry_field.pack()
-    send_button = Tkinter.Button(top, text="Send Message", command=lambda:messageProcessing(my_msg.get(),"send",msg_list))
-    send_button.pack()
-    sendFileBut=Tkinter.Button(top, text="Send File", command=lambda:messageProcessing(my_msg.get(),"send file",msg_list))
-    sendFileBut.pack()
-    getFileBut=Tkinter.Button(top, text="Get File", command=lambda:messageProcessing(my_msg.get(),"get file",msg_list))
-    getFileBut.pack()
-    makeRoomBut=Tkinter.Button(top, text="Make Chatroom", command=lambda:messageProcessing(my_msg.get(),"make chatroom",msg_list))
-    makeRoomBut.pack()
-    joinRoomBut=Tkinter.Button(top, text="Join Chatroom", command=lambda:messageProcessing(my_msg.get(),"join chatroom",msg_list))
-    joinRoomBut.pack()
-    top.protocol("WM_DELETE_WINDOW", on_closing(top))
-    Tkinter.mainloop()
 
 def recieve():
     print("start receive")
     while True:
-
-        sockets_list = [sys.stdin, server]
-        read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
-        # print(read_sockets, write_socket, error_socket)
-        for socks in read_sockets:
-            if socks == server:
-                message = socks.recv(2080)
-                message = decrypt_message(message)
-                print (message)
+        message = server.recv(2080)
+        message = decrypt_message(message)
+        msg_list.insert(Tkinter.END, message)
 
 #main script
 
-print("Enter a username:\n")
-username= sys.stdin.readline()
-username=username[:-1]
-print("stored "+username+" as username")
-
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-if len(sys.argv) != 4:
-    print ("Correct usage: script, IP address, port number")
+if len(sys.argv) != 5:
+    print ("Correct usage: script, username, IP address, port number, keyfile")
     exit()
-IP_address = str(sys.argv[1])
-Port = int(sys.argv[2])
+IP_address = str(sys.argv[2])
+Port = int(sys.argv[3])
 server.connect((IP_address, Port))
-
-
-keyfile = str(sys.argv[3])
+username=str(sys.argv[1])
+keyfile = str(sys.argv[4])
 key = ""
 try:
 	file = open(keyfile, "r")
@@ -178,8 +142,35 @@ except:
 
 server.send(encrypt_message(username))
 
-
-thread.start_new_thread(recieve,())
 print("starting gui")
-startGUI(username,server)
+top = Tkinter.Tk()
+top.title("Chatter")
+messages_frame = Tkinter.Frame(top)
+my_msg = Tkinter.StringVar()  # For the messages to be sent.
+scrollbar = Tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
+# Following will contain the messages.
+msg_list = Tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
+scrollbar.pack(side=Tkinter.RIGHT, fill=Tkinter.Y)
+msg_list.pack(side=Tkinter.LEFT, fill=Tkinter.BOTH)
+msg_list.pack()
+messages_frame.pack()
+entry_field = Tkinter.Entry(top, textvariable=my_msg)
+entry_field.pack()
+send_button = Tkinter.Button(top, text="Send Message", command=lambda:messageProcessing(my_msg.get(),"send",msg_list))
+send_button.pack()
+sendFileBut=Tkinter.Button(top, text="Send File", command=lambda:messageProcessing(my_msg.get(),"send file",msg_list))
+sendFileBut.pack()
+getFileBut=Tkinter.Button(top, text="Get File", command=lambda:messageProcessing(my_msg.get(),"get file",msg_list))
+getFileBut.pack()
+makeRoomBut=Tkinter.Button(top, text="Make Chatroom", command=lambda:messageProcessing(my_msg.get(),"make chatroom",msg_list))
+makeRoomBut.pack()
+joinRoomBut=Tkinter.Button(top, text="Join Chatroom", command=lambda:messageProcessing(my_msg.get(),"join chatroom",msg_list))
+joinRoomBut.pack()
+top.protocol("WM_DELETE_WINDOW", on_closing(top))
+thread.start_new_thread(recieve,())
+Tkinter.mainloop()
+
+
+
+
 server.close()
