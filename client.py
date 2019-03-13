@@ -23,9 +23,9 @@ def sendMessage(username,server,message,msg_list):
     msg_list.insert(Tkinter.END,"<"+username+"> "+message)
     message = encrypt_message(message)
     server.send(message)
-   
 
-def getFile(conn, filename): 
+
+def getFile(conn, filename):
     #filename="filelul.txt"
     conn.send(encrypt_message("get file"))
     new_port = int(decrypt_message(conn.recv(1040)))
@@ -90,6 +90,7 @@ def on_closing(top,event=None):
     top.quit()
 
 def messageProcessing(message,f,msg_list):
+    print("here")
     if f=='send file':
         msg_list.insert(Tkinter.END,"Enter filename")
         sendFileFunc(message)
@@ -104,7 +105,7 @@ def messageProcessing(message,f,msg_list):
         sendMessage(username,server,message,msg_list)
 
 def startGUI(username,server):
-    
+
     top = Tkinter.Tk()
     top.title("Chatter")
 
@@ -120,15 +121,15 @@ def startGUI(username,server):
     entry_field = Tkinter.Entry(top, textvariable=my_msg)
     entry_field.bind("<Return>", messageProcessing(my_msg.get(),"send",msg_list))
     entry_field.pack()
-    send_button = Tkinter.Button(top, text="Send Message", command=messageProcessing(my_msg.get(),"send",msg_list))
+    send_button = Tkinter.Button(top, text="Send Message", command=lambda:messageProcessing(my_msg.get(),"send",msg_list))
     send_button.pack()
-    sendFileBut=Tkinter.Button(top, text="Send File", command=messageProcessing(my_msg.get(),"send file",msg_list))
+    sendFileBut=Tkinter.Button(top, text="Send File", command=lambda:messageProcessing(my_msg.get(),"send file",msg_list))
     sendFileBut.pack()
-    getFileBut=Tkinter.Button(top, text="Get File", command=messageProcessing(my_msg.get(),"get file",msg_list))
+    getFileBut=Tkinter.Button(top, text="Get File", command=lambda:messageProcessing(my_msg.get(),"get file",msg_list))
     getFileBut.pack()
-    makeRoomBut=Tkinter.Button(top, text="Make Chatroom", command=messageProcessing(my_msg.get(),"make chatroom",msg_list))
+    makeRoomBut=Tkinter.Button(top, text="Make Chatroom", command=lambda:messageProcessing(my_msg.get(),"make chatroom",msg_list))
     makeRoomBut.pack()
-    joinRoomBut=Tkinter.Button(top, text="Join Chatroom", command=messageProcessing(my_msg.get(),"join chatroom",msg_list))
+    joinRoomBut=Tkinter.Button(top, text="Join Chatroom", command=lambda:messageProcessing(my_msg.get(),"join chatroom",msg_list))
     joinRoomBut.pack()
     top.protocol("WM_DELETE_WINDOW", on_closing(top))
     Tkinter.mainloop()
@@ -139,13 +140,13 @@ def recieve():
 
         sockets_list = [sys.stdin, server]
         read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
-
+        # print(read_sockets, write_socket, error_socket)
         for socks in read_sockets:
             if socks == server:
                 message = socks.recv(2080)
                 message = decrypt_message(message)
                 print (message)
-            
+
 #main script
 
 print("Enter a username:\n")
@@ -179,6 +180,6 @@ server.send(encrypt_message(username))
 
 
 thread.start_new_thread(recieve,())
-
+print("starting gui")
 startGUI(username,server)
 server.close()
